@@ -46,7 +46,7 @@ async def kakao_chatbot(request: Request):
     try:
         # 4. OpenAI API 호출 (소크라테스 봇 응답 생성)
         response = await client.chat.completions.create(
-            model="gpt-3.5-turbo", # 성능이 더 필요하다면 gpt-4o 사용
+            model="gpt-4o-mini", # 성능이 더 필요하다면 gpt-4o 사용
             messages=chat_history[user_id],
             temperature=0.7 # 약간의 창의성과 유연성 허용
         )
