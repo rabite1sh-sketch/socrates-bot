@@ -6,7 +6,7 @@ app = FastAPI()
 
 # OpenAI API 키 설정 (본인의 키로 변경하세요)
 # 환경 변수로 설정하는 것을 권장합니다: os.environ.get("OPENAI_API_KEY")
-client = AsyncOpenAI(api_key="YOUR_OPENAI_API_KEY")
+client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 # 간단한 메모리 저장소 (사용자별 대화 맥락 유지)
 # 주의: 실제 서비스 배포 시에는 딕셔너리 대신 DB(Redis, MongoDB 등)를 사용해야 합니다.
