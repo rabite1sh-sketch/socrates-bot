@@ -3,22 +3,23 @@ import httpx
 import traceback
 from fastapi import BackgroundTasks, FastAPI, Request
 from openai import AsyncOpenAI
-from dotenv import load_dotenv
-
-# -----------------------------
-# 1. 환경 변수 로드
-# -----------------------------
-load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI()
+
+# -----------------------------
+# 1. OpenAI 비동기 클라이언트 초기화
+# -----------------------------
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise RuntimeError("환경변수 OPENAI_API_KEY가 설정되어 있지 않습니다.")
+
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
 
 # -----------------------------
 # 2. 상태 관리
 # -----------------------------
 chat_history = {}   # {user_id: [messages]}
-user_modes = {}    # {user_id: "answer" / "socratic"}
+user_modes = {}     # {user_id: "answer" / "socratic"}
 
 # -----------------------------
 # 3. 모드별 시스템 프롬프트
@@ -58,8 +59,11 @@ async def process_openai_and_callback(user_id: str, callback_url: str):
             "version": "2.0",
             "template": {"outputs": [{"simpleText": {"text": "[System Error] 데이터 처리 중 오류 발생"}}]}
         }
-        async with httpx.AsyncClient() as http_client:
-            await http_client.post(callback_url, json=error_payload)
+        try:
+            async with httpx.AsyncClient() as http_client:
+                await http_client.post(callback_url, json=error_payload)
+        except Exception:
+            traceback.print_exc()
 
 # -----------------------------
 # 5. 카톡 챗봇 엔드포인트
