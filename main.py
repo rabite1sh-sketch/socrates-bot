@@ -30,23 +30,24 @@ async def kakao_chatbot(request: Request):
     user_id = user_request.get("user", {}).get("id", "unknown_user")
     user_utterance = user_request.get("utterance", "")
 
-    # 2. 사용자별 대화 기록 초기화
-    if user_id not in chat_history or not chat_history[user_id]:
+    # 2. 사용자별 대화 기록 초기화 (시스템 프롬프트 주입)
+    if user_id not in chat_history:
         chat_history[user_id] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
     # 3. 사용자의 현재 메시지를 대화 기록에 추가
     chat_history[user_id].append({"role": "user", "content": user_utterance})
 
-    # 4. 프롬프트 망각 방지 (시스템 프롬프트 1개 + 최근 대화 6개만 유지)
-    formatted_messages = [chat_history[user_id][0]] + chat_history[user_id][-6:]
+    # 4. 프롬프트 중복 방지 및 토큰 관리 (System 1개 + 최근 대화 6개 유지)
+    if len(chat_history[user_id]) > 7:
+        chat_history[user_id] = [chat_history[user_id][0]] + chat_history[user_id][-6:]
 
     try:
         # 5. OpenAI API 호출 (동기식 즉시 응답, 5초 타임아웃 방어)
         response = await client.chat.completions.create(
             model="gpt-3.5-turbo", 
-            messages=formatted_messages,
+            messages=chat_history[user_id],
             temperature=0.7, # 창의성을 약간 부여하여 자연스러운 질문 유도
-            timeout=3.8      # 카카오 5초 제한을 피하기 위해 3.8초 컷
+            timeout=3.5      # 카카오 5초 제한을 완벽히 피하기 위해 3.5초 컷
         )
         ai_message = response.choices[0].message.content
         
@@ -54,7 +55,9 @@ async def kakao_chatbot(request: Request):
         chat_history[user_id].append({"role": "assistant", "content": ai_message})
 
     except Exception as e:
-        # 타임아웃(3.8초 초과) 또는 API 에러 발생 시 부드러운 예외 처리
+        # 에러 출력 (디버깅용)
+        print(f"Error for {user_id}: {e}")
+        # 타임아웃(3.5초 초과) 또는 API 에러 발생 시 부드러운 예외 처리
         ai_message = "음... 소크라테스가 깊은 생각에 빠졌네요! 다시 한번 말씀해 주시겠어요? 🤔"
 
     # 6. 카카오 규격에 맞춘 즉시 응답 JSON 반환
